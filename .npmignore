@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+
+# Development files
+src
+public
+*.html
+
+# Config files
+vite.config.ts
+tsconfig*.json
+eslint.config.js
+
+# Build cache
+.vite
+*.tsbuildinfo
+
+# IDE
+.vscode
+.idea
+
+# Testing
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Misc
+.DS_Store
+*.log
+.env*
