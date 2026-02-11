@@ -5,6 +5,6 @@ import Calendar from './Calendar.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-        <Calendar />
+    <Calendar />
   </StrictMode>,
 )
