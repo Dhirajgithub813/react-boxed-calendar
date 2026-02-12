@@ -499,29 +499,25 @@ const Calendar = ({
             selectedRange.start &&
             selectedRange.end &&
             dateIsAfter(day, selectedRange.start) &&
-            dateIsBefore (day, selectedRange.end);
+            dateIsBefore(day, selectedRange.end);
 
           const isHolidayDate = isHoliday(day);
           const isWeekdayOff = weekdayOFFSet.has(day.getDay());
 
           // Determine base styles
-          let baseStyles = "";
-
-          if (isSelected) {
-            baseStyles = `${resolvedTheme.selectedBg} ${resolvedTheme.selectedText} scale-105 shadow-lg`;
-          } else if (disabled) {
-            baseStyles = `${resolvedTheme.disabledBg} ${resolvedTheme.disabledText} cursor-not-allowed`;
-          } else if (isToday(day) && highlightToday) {
-            baseStyles = `${resolvedTheme.todayBg} ${resolvedTheme.todayText}`;
-          } else if (isInRange) {
-            baseStyles = "bg-blue-50 text-blue-600";
-          } else if (isWeekdayOff) {
-            baseStyles = `${mergedWeekdayOffColor.bg} ${mergedWeekdayOffColor.text} ${mergedWeekdayOffColor.hoverBg || ""}`;
-          } else if (isHolidayDate) {
-            baseStyles = `${mergedHolidayColor.bg} ${mergedHolidayColor.text} ${mergedHolidayColor.hoverBg || ""}`;
-          } else {
-            baseStyles = `${resolvedTheme.normalText} ${resolvedTheme.normalHoverBg} hover:scale-105`;
-          }
+          let baseStyles = isSelected
+            ? `${resolvedTheme.selectedBg} ${resolvedTheme.selectedText} scale-105 shadow-lg`
+            : disabled
+              ? `${resolvedTheme.disabledBg} ${resolvedTheme.disabledText} cursor-not-allowed`
+              : isToday(day) && highlightToday
+                ? `${resolvedTheme.todayBg} ${resolvedTheme.todayText}`
+                : isInRange
+                  ? "bg-blue-50 text-blue-600"
+                  : isWeekdayOff
+                    ? `${mergedWeekdayOffColor.bg} ${mergedWeekdayOffColor.text} ${mergedWeekdayOffColor.hoverBg || ""}`
+                    : isHolidayDate
+                      ? `${mergedHolidayColor.bg} ${mergedHolidayColor.text} ${mergedHolidayColor.hoverBg || ""}`
+                      : `${resolvedTheme.normalText} ${resolvedTheme.normalHoverBg} hover:scale-105`;
 
           return (
             <button
