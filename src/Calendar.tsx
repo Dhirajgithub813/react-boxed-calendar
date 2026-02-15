@@ -1,100 +1,100 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { themes } from "./themes";
+import {
+  generateMonthGrid,
+  isDateAfter,
+  isDateBefore,
+  isSameDay,
+  isToday,
+} from "./utils";
+
+export interface CalendarTheme {
+  containerBg?: string;
+  containerBorder?: string;
+  selectedBg?: string;
+  selectedText?: string;
+  todayBg?: string;
+  todayText?: string;
+  normalText?: string;
+  normalHoverBg?: string;
+  disabledBg?: string;
+  disabledText?: string;
+  borderRadius?: string;
+}
+
+export interface CalendarLocale {
+  weekDays?: [string, string, string, string, string, string, string];
+  monthNames?: [string, string, string, string, string, string, string, string, string, string, string, string];
+}
 
 export interface CalendarProps {
-  // Modes
   mode?: "single" | "range";
-
-  // Single date selection
   selectedDate?: Date | null;
   onDateChange?: (date: Date) => void;
-
-  // Range selection
   selectedRange?: { start: Date | null; end: Date | null };
   onRangeChange?: (start: Date | null, end: Date | null) => void;
-
-  // Date limits
   minDate?: Date;
   maxDate?: Date;
-
-  // Behavior toggles
   disablePastDates?: boolean;
   disableFutureDates?: boolean;
   disableWeekends?: boolean;
   disableMonthNav?: boolean;
-  // Custom disabled weekdays
   weekdayOFF?: number[];
   weekdayOFFColor?: {
     bg?: string;
     text?: string;
     hoverBg?: string;
   };
-
-  // User callback for disabling dates
   isDateDisabled?: (date: Date) => boolean;
-
   highlightToday?: boolean;
-  weekStartsOn?: 0 | 1; // 0 = Sunday, 1 = Monday
-
-  // Holidays
+  weekStartsOn?: 0 | 1;
   holidays?: Date[];
   holidayColor?: {
     bg?: string;
     text?: string;
     hoverBg?: string;
   };
-
-  // Localization
-  locale?: {
-    weekDays?: [string, string, string, string, string, string, string];
-    monthNames?: [string, string, string, string, string, string, string, string, string, string, string, string];
-  };
-
-  // Theme
-  theme?: {
-    containerBg?: string;
-    containerBorder?: string;
-
-    selectedBg?: string;
-    selectedText?: string;
-
-    todayBg?: string;
-    todayText?: string;
-
-    normalText?: string;
-    normalHoverBg?: string;
-
-    disabledBg?: string;
-    disabledText?: string;
-
-    borderRadius?: string;
-
-  };
-
-  // Size
+  locale?: CalendarLocale;
+  theme?: CalendarTheme;
+  themeName?: keyof typeof themes;
   size?: "sm" | "md" | "lg";
-  // theme Name 
-  themeName?: "light" | "dark" | "metallic" | "cyberpunk" | "retro" | "nature";
-
-  // Custom sizing (optional) - overrides size preset
   customSize?: {
-    box?: number;     // full calendar width/height
-    cell?: number;    // each date cell size
-    gap?: number;     // spacing between cells
+    box?: number;
+    cell?: number;
+    gap?: number;
   };
 }
+
+const DEFAULT_THEME: Required<CalendarTheme> = {
+  containerBg: "bg-white",
+  containerBorder: "border-gray-100",
+  selectedBg: "bg-blue-600",
+  selectedText: "text-white",
+  todayBg: "bg-blue-100",
+  todayText: "text-blue-700",
+  normalText: "text-gray-700",
+  normalHoverBg: "hover:bg-gray-100",
+  disabledBg: "bg-gray-50",
+  disabledText: "text-gray-300",
+  borderRadius: "rounded-2xl",
+};
+
+const DEFAULT_LOCALE: Required<CalendarLocale> = {
+  weekDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  monthNames: [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ],
+};
 
 const Calendar = ({
   mode = "single",
   selectedDate = null,
   onDateChange,
-
   selectedRange = { start: null, end: null },
   onRangeChange,
-
   minDate,
   maxDate,
-
   disablePastDates = false,
   disableFutureDates = false,
   disableWeekends = false,
@@ -105,263 +105,229 @@ const Calendar = ({
     text: "text-gray-500",
     hoverBg: "hover:bg-gray-200",
   },
-
   isDateDisabled,
-
   highlightToday = true,
   weekStartsOn = 0,
-
   holidays = [],
   holidayColor = {
     bg: "bg-red-100",
     text: "text-red-700",
     hoverBg: "hover:bg-red-200",
   },
-
-  locale = {
-    weekDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    monthNames: [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ],
-  },
-
-  theme = {},
+  locale: userLocale,
+  theme: userTheme,
   themeName = "light",
   size = "md",
-
-  // Destructure customSize
   customSize,
 }: CalendarProps) => {
-  const resolvedTheme = {
-    ...themes[themeName],
-    ...theme, // custom overrides
-  };
-  const [currentMonth, setCurrentMonth] = useState<Date>(
-    selectedDate ?? new Date()
-  );
+  // Theme resolution: preset → defaults → user overrides
+  const mergedTheme = useMemo(() => {
+    return {
+      ...themes[themeName],
+      ...DEFAULT_THEME,
+      ...userTheme,
+    };
+  }, [themeName, userTheme]);
+
+  // Locale resolution: defaults → user overrides
+  const mergedLocale = useMemo(() => {
+    return {
+      ...DEFAULT_LOCALE,
+      ...userLocale,
+    };
+  }, [userLocale]);
+
+  const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
   const [activePanel, setActivePanel] = useState<"month" | "year" | null>(null);
   const [yearPageStart, setYearPageStart] = useState<number>(
     (selectedDate ?? new Date()).getFullYear() - 6
   );
 
-  // Replaced cellSize logic with preset + custom support
-  const presetCellSize =
-    size === "sm"
-      ? "w-8 h-8 text-xs"
-      : size === "lg"
-        ? "w-14 h-14 text-lg"
-        : "w-10 h-10 text-sm"; // md default
+  // Sync view when selectedDate changes externally
+  useEffect(() => {
+    if (selectedDate && !isSameDay(selectedDate, currentMonth)) {
+      if (
+        selectedDate.getMonth() !== currentMonth.getMonth() ||
+        selectedDate.getFullYear() !== currentMonth.getFullYear()
+      ) {
+        setCurrentMonth(new Date(selectedDate));
+      }
+    }
+  }, [selectedDate, currentMonth]);
 
-  // Custom sizing styles with explicit px units
+  // Size presets with custom override support
+  const presetCellSize = useMemo(() => {
+    switch (size) {
+      case "sm": return "w-8 h-8 text-xs";
+      case "lg": return "w-14 h-14 text-lg";
+      default: return "w-10 h-10 text-sm";
+    }
+  }, [size]);
+
   const cellStyle = customSize?.cell
     ? { width: `${customSize.cell}px`, height: `${customSize.cell}px` }
     : undefined;
 
   const gridGap = customSize?.gap ?? 8;
 
-  // Merge holiday color prop with defaults so partial overrides work.
-  const mergedHolidayColor = {
+  // Normalize disabled weekdays for fast lookup
+  const weekdayOFFSet = useMemo(() => new Set<number>(weekdayOFF), [weekdayOFF]);
+
+  // Merge color props with defaults
+  const mergedHolidayColor = useMemo(() => ({
     bg: "bg-red-100",
     text: "text-red-700",
     hoverBg: "hover:bg-red-200",
     ...holidayColor,
-  };
-  const mergedWeekdayOffColor = {
+  }), [holidayColor]);
+
+  const mergedWeekdayOffColor = useMemo(() => ({
     bg: "bg-gray-100",
     text: "text-gray-500",
     hoverBg: "hover:bg-gray-200",
     ...weekdayOFFColor,
-  };
-  // Normalize weekdayOFF into a Set for fast/multiple lookups
-  const weekdayOFFSet = new Set<number>(weekdayOFF ?? []);
+  }), [weekdayOFFColor]);
 
-  // Helpers
-  const sameDay = (d1: Date | null, d2: Date | null) => {
-    if (!d1 || !d2) return false;
-    return (
-      d1.getDate() === d2.getDate() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getFullYear() === d2.getFullYear()
+  // Generate calendar grid
+  const days = useMemo(() => {
+    return generateMonthGrid(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      weekStartsOn
     );
-  };
+  }, [currentMonth, weekStartsOn]);
 
-  const isToday = (date: Date) => sameDay(date, new Date());
+  // Check if date is a holiday
+  const isHoliday = useCallback((date: Date) => {
+    return holidays.some(holiday => isSameDay(holiday, date));
+  }, [holidays]);
 
-  const isHoliday = (date: Date) => {
-    return holidays.some(holiday => sameDay(holiday, date));
-  };
-
-  const dateIsBefore = (a: Date, b: Date) => {
-    const dateA = new Date(a);
-    const dateB = new Date(b);
-    dateA.setHours(0, 0, 0, 0);
-    dateB.setHours(0, 0, 0, 0);
-    return dateA.getTime() < dateB.getTime();
-  };
-
-  const dateIsAfter = (a: Date, b: Date) => {
-    const dateA = new Date(a);
-    const dateB = new Date(b);
-    dateA.setHours(0, 0, 0, 0);
-    dateB.setHours(0, 0, 0, 0);
-    return dateA.getTime() > dateB.getTime();
-  };
-
-  const shouldDisable = (date: Date) => {
-    if (disablePastDates) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-      if (checkDate < today) return true;
-    }
-
-    if (minDate && dateIsBefore(date, minDate)) return true;
-
-    if (disableFutureDates) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-      if (checkDate > today) return true;
-    }
-
-    if (maxDate && dateIsAfter(date, maxDate)) return true;
-
-    if (disableWeekends && (date.getDay() === 0 || date.getDay() === 6))
-      return true;
-
+  // Disable logic
+  const shouldDisable = useCallback((date: Date) => {
+    if (disablePastDates && isDateBefore(date, new Date())) return true;
+    if (disableFutureDates && isDateAfter(date, new Date())) return true;
+    if (minDate && isDateBefore(date, minDate)) return true;
+    if (maxDate && isDateAfter(date, maxDate)) return true;
+    if (disableWeekends && (date.getDay() === 0 || date.getDay() === 6)) return true;
+    if (weekdayOFFSet.has(date.getDay())) return true;
     if (isDateDisabled && isDateDisabled(date)) return true;
-
     return false;
-  };
+  }, [disablePastDates, disableFutureDates, minDate, maxDate, disableWeekends, weekdayOFFSet, isDateDisabled]);
 
-  const handleSelect = (date: Date) => {
+  // Selection handler
+  const handleSelect = useCallback((date: Date) => {
     if (shouldDisable(date)) return;
 
     if (mode === "single" && onDateChange) {
       onDateChange(date);
-    }
-
-    if (mode === "range" && onRangeChange) {
+    } else if (mode === "range" && onRangeChange) {
       const { start, end } = selectedRange;
-
       if (!start || (start && end)) {
         onRangeChange(date, null);
       } else if (start && !end) {
-        if (dateIsBefore(date, start)) {
+        if (isDateBefore(date, start)) {
           onRangeChange(date, start);
         } else {
           onRangeChange(start, date);
         }
       }
     }
-  };
+  }, [mode, onDateChange, onRangeChange, selectedRange, shouldDisable]);
 
-  const changeMonth = (offset: number) => {
+  // Navigation handlers
+  const changeMonth = useCallback((offset: number) => {
     const newMonth = new Date(currentMonth);
     newMonth.setMonth(newMonth.getMonth() + offset);
     setCurrentMonth(newMonth);
     setActivePanel(null);
-  };
+  }, [currentMonth]);
 
-  const toggleMonthPanel = () => {
-    if (disableMonthNav) return;
-    setActivePanel((prev) => (prev === "month" ? null : "month"));
-  };
-
-  const toggleYearPanel = () => {
-    if (disableMonthNav) return;
-    setYearPageStart(currentMonth.getFullYear() - 6);
-    setActivePanel((prev) => (prev === "year" ? null : "year"));
-  };
-
-  const setMonth = (monthIndex: number) => {
+  const setMonth = useCallback((monthIndex: number) => {
     const next = new Date(currentMonth);
     next.setMonth(monthIndex);
     setCurrentMonth(next);
     setActivePanel(null);
-  };
+  }, [currentMonth]);
 
-  const setYear = (year: number) => {
+  const setYear = useCallback((year: number) => {
     const next = new Date(currentMonth);
     next.setFullYear(year);
     setCurrentMonth(next);
     setActivePanel(null);
-  };
+  }, [currentMonth]);
 
-  // Generate days
-  const getDays = () => {
-    const y = currentMonth.getFullYear();
-    const m = currentMonth.getMonth();
+  const toggleMonthPanel = useCallback(() => {
+    if (disableMonthNav) return;
+    setActivePanel(prev => prev === "month" ? null : "month");
+  }, [disableMonthNav]);
 
-    const first = new Date(y, m, 1);
-    const last = new Date(y, m + 1, 0);
-
-    const startOffset = (first.getDay() - weekStartsOn + 7) % 7;
-    const days: (Date | null)[] = [];
-
-    for (let i = 0; i < startOffset; i++) days.push(null);
-    for (let d = 1; d <= last.getDate(); d++) days.push(new Date(y, m, d));
-
-    return days;
-  };
-
-  const days = getDays();
+  const toggleYearPanel = useCallback(() => {
+    if (disableMonthNav) return;
+    setYearPageStart(currentMonth.getFullYear() - 6);
+    setActivePanel(prev => prev === "year" ? null : "year");
+  }, [currentMonth, disableMonthNav]);
 
   return (
-    <div className={`
-    p-6 shadow-lg
-    ${resolvedTheme.containerBg}
-    ${resolvedTheme.containerBorder}
-    rounded-2xl
-  `}
+    <div
+      className={`
+        p-6 shadow-lg select-none
+        ${mergedTheme.containerBg}
+        ${mergedTheme.containerBorder}
+        ${mergedTheme.borderRadius}
+      `}
       style={
         customSize?.box
           ? { width: `${customSize.box}px`, height: `${customSize.box}px` }
           : undefined
-      }>
+      }
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         {!disableMonthNav && (
           <button
             onClick={() => changeMonth(-1)}
-            className={`p-2 ${resolvedTheme.normalHoverBg} rounded-full transition-colors`}
+            className={`
+              p-2 rounded-full transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+              ${mergedTheme.normalHoverBg}
+            `}
             aria-label="Previous month"
           >
-            <svg className={`w-6 h-6 ${resolvedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg 
+              className={`w-6 h-6 ${mergedTheme.normalText}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mx-auto">
           <button
             type="button"
             onClick={toggleMonthPanel}
-            className={`font-bold text-xl ${resolvedTheme.normalText} px-2 py-1 rounded-lg transition-colors ${disableMonthNav ? "cursor-default" : `${resolvedTheme.normalHoverBg}`
-              }`}
+            className={`
+              font-bold text-xl px-2 py-1 rounded-lg transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+              ${disableMonthNav ? "cursor-default" : mergedTheme.normalHoverBg}
+              ${mergedTheme.normalText}
+            `}
             aria-label="Select month"
             aria-expanded={activePanel === "month"}
           >
-            {locale.monthNames![currentMonth.getMonth()]}
+            {mergedLocale.monthNames[currentMonth.getMonth()]}
           </button>
           <button
             type="button"
             onClick={toggleYearPanel}
-            className={`font-bold text-xl ${resolvedTheme.normalText} px-2 py-1 rounded-lg transition-colors ${disableMonthNav ? "cursor-default" : `${resolvedTheme.normalHoverBg}`
-              }`}
+            className={`
+              font-bold text-xl px-2 py-1 rounded-lg transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+              ${disableMonthNav ? "cursor-default" : mergedTheme.normalHoverBg}
+              ${mergedTheme.normalText}
+            `}
             aria-label="Select year"
             aria-expanded={activePanel === "year"}
           >
@@ -372,30 +338,48 @@ const Calendar = ({
         {!disableMonthNav && (
           <button
             onClick={() => changeMonth(1)}
-            className={`p-2 ${resolvedTheme.normalHoverBg} rounded-full transition-colors`}
+            className={`
+              p-2 rounded-full transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+              ${mergedTheme.normalHoverBg}
+            `}
             aria-label="Next month"
           >
-            <svg className={`w-6 h-6 ${resolvedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg 
+              className={`w-6 h-6 ${mergedTheme.normalText}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         )}
       </div>
 
+      {/* Month Selector */}
       {activePanel === "month" && !disableMonthNav && (
-        <div className={`mb-4 p-4 ${resolvedTheme.containerBg} border ${resolvedTheme.containerBorder} rounded-xl shadow-sm`}>
+        <div className={`
+          mb-4 p-4 border rounded-xl shadow-sm
+          ${mergedTheme.containerBg}
+          ${mergedTheme.containerBorder}
+        `}>
           <div className="grid grid-cols-3" style={{ gap: gridGap }}>
-            {locale.monthNames!.map((name, index) => {
+            {mergedLocale.monthNames.map((name, index) => {
               const isCurrent = index === currentMonth.getMonth();
               return (
                 <button
                   key={name}
                   type="button"
                   onClick={() => setMonth(index)}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isCurrent
-                    ? `${resolvedTheme.selectedBg} text-white`
-                    : `${resolvedTheme.normalText} ${resolvedTheme.normalHoverBg}`
-                    }`}
+                  className={`
+                    px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-blue-500
+                    ${isCurrent
+                      ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
+                      : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
+                    }
+                  `}
                 >
                   {name}
                 </button>
@@ -405,131 +389,149 @@ const Calendar = ({
         </div>
       )}
 
+      {/* Year Selector */}
       {activePanel === "year" && !disableMonthNav && (
-        <div className={`mb-4 p-4 ${resolvedTheme.containerBg} border ${resolvedTheme.containerBorder} rounded-xl shadow-sm`}>
+        <div className={`
+          mb-4 p-4 border rounded-xl shadow-sm
+          ${mergedTheme.containerBg}
+          ${mergedTheme.containerBorder}
+        `}>
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
-              onClick={() => setYearPageStart((prev) => prev - 12)}
-              className={`p-2 ${resolvedTheme.normalHoverBg} rounded-full transition-colors`}
+              onClick={() => setYearPageStart(prev => prev - 12)}
+              className={`
+                p-2 rounded-full transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                ${mergedTheme.normalHoverBg}
+              `}
               aria-label="Previous years"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-5 h-5 ${mergedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className={`text-sm font-semibold ${resolvedTheme.normalText}`}>
+            <span className={`text-sm font-semibold ${mergedTheme.normalText}`}>
               {yearPageStart} - {yearPageStart + 11}
             </span>
             <button
               type="button"
-              onClick={() => setYearPageStart((prev) => prev + 12)}
-              className={`p-2 ${resolvedTheme.normalHoverBg} rounded-full transition-colors`}
+              onClick={() => setYearPageStart(prev => prev + 12)}
+              className={`
+                p-2 rounded-full transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                ${mergedTheme.normalHoverBg}
+              `}
               aria-label="Next years"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-5 h-5 ${mergedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
-          <div
-            className="grid grid-cols-4"
-            style={{ gap: gridGap }}
-          >
-            {Array.from({ length: 12 }, (_, i) => yearPageStart + i).map(
-              (year) => {
-                const isCurrent = year === currentMonth.getFullYear();
-                return (
-                  <button
-                    key={year}
-                    type="button"
-                    onClick={() => setYear(year)}
-                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isCurrent
-                      ? `${resolvedTheme.selectedBg} text-white`
-                      : `${resolvedTheme.normalText} ${resolvedTheme.normalHoverBg}`
-                      }`}
-                  >
-                    {year}
-                  </button>
-                );
-              }
-            )}
+          <div className="grid grid-cols-4" style={{ gap: gridGap }}>
+            {Array.from({ length: 12 }, (_, i) => yearPageStart + i).map((year) => {
+              const isCurrent = year === currentMonth.getFullYear();
+              return (
+                <button
+                  key={year}
+                  type="button"
+                  onClick={() => setYear(year)}
+                  className={`
+                    px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-blue-500
+                    ${isCurrent
+                      ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
+                      : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
+                    }
+                  `}
+                >
+                  {year}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Week days - Updated with consistent gap */}
-      <div
-        className="grid grid-cols-7 mb-2"
-        style={{ gap: gridGap }}
-      >
-        {locale.weekDays!.map((d) => (
+      {/* Weekday Headers */}
+      <div className="grid grid-cols-7 mb-2" style={{ gap: gridGap }}>
+        {mergedLocale.weekDays.map((d, i) => (
           <div
-            key={d}
+            key={`weekday-${i}`}
             className="text-center font-semibold text-gray-600 text-sm py-2"
+            aria-label={d}
           >
             {d}
           </div>
         ))}
       </div>
 
-      {/* Grid - Updated with custom gap and cell sizing */}
-      <div
-        className="grid grid-cols-7 place-items-center"
-        style={{ gap: gridGap }}
-      >
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 place-items-center" style={{ gap: gridGap }}>
         {days.map((day, i) => {
-          if (!day) return (
-            <div
-              key={i}
-              style={cellStyle}
-              className={customSize ? "" : presetCellSize}
-            />
-          );
+          if (!day) {
+            return (
+              <div
+                key={i}
+                style={cellStyle}
+                className={customSize ? "" : presetCellSize}
+              />
+            );
+          }
 
           const disabled = shouldDisable(day);
-          const isSelected =
-            mode === "single"
-              ? sameDay(day, selectedDate)
-              : (selectedRange.start && sameDay(day, selectedRange.start)) ||
-              (selectedRange.end && sameDay(day, selectedRange.end));
+          const isSelected = mode === "single"
+            ? isSameDay(day, selectedDate)
+            : (selectedRange.start && isSameDay(day, selectedRange.start)) ||
+              (selectedRange.end && isSameDay(day, selectedRange.end));
 
-          const isInRange =
-            mode === "range" &&
+          const isInRange = mode === "range" &&
             selectedRange.start &&
             selectedRange.end &&
-            dateIsAfter(day, selectedRange.start) &&
-            dateIsBefore(day, selectedRange.end);
+            isDateAfter(day, selectedRange.start) &&
+            isDateBefore(day, selectedRange.end);
 
+          const isTodayDate = isToday(day);
+          const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
           const isHolidayDate = isHoliday(day);
           const isWeekdayOff = weekdayOFFSet.has(day.getDay());
 
-          // Determine base styles
-          let baseStyles = isSelected
-            ? `${resolvedTheme.selectedBg} ${resolvedTheme.selectedText} scale-105 shadow-lg`
-            : disabled
-              ? `${resolvedTheme.disabledBg} ${resolvedTheme.disabledText} cursor-not-allowed`
-              : isToday(day) && highlightToday
-                ? `${resolvedTheme.todayBg} ${resolvedTheme.todayText}`
-                : isInRange
-                  ? "bg-blue-50 text-blue-600"
-                  : isWeekdayOff
-                    ? `${mergedWeekdayOffColor.bg} ${mergedWeekdayOffColor.text} ${mergedWeekdayOffColor.hoverBg || ""}`
-                    : isHolidayDate
-                      ? `${mergedHolidayColor.bg} ${mergedHolidayColor.text} ${mergedHolidayColor.hoverBg || ""}`
-                      : `${resolvedTheme.normalText} ${resolvedTheme.normalHoverBg} hover:scale-105`;
+          // Determine cell styles with priority: selected > today > range > holiday > weekdayOff > normal
+          let cellStyles = "";
+          
+          if (disabled) {
+            cellStyles = `${mergedTheme.disabledBg} ${mergedTheme.disabledText} cursor-not-allowed opacity-50`;
+          } else if (isSelected) {
+            cellStyles = `${mergedTheme.selectedBg} ${mergedTheme.selectedText} scale-105 shadow-lg z-10`;
+          } else if (isTodayDate && highlightToday) {
+            cellStyles = `${mergedTheme.todayBg} ${mergedTheme.todayText} font-bold ring-1 ring-blue-200`;
+          } else if (isInRange) {
+            cellStyles = "bg-blue-50 text-blue-600";
+          } else if (isHolidayDate) {
+            cellStyles = `${mergedHolidayColor.bg} ${mergedHolidayColor.text} ${mergedHolidayColor.hoverBg || ""}`;
+          } else if (isWeekdayOff) {
+            cellStyles = `${mergedWeekdayOffColor.bg} ${mergedWeekdayOffColor.text} ${mergedWeekdayOffColor.hoverBg || ""}`;
+          } else {
+            cellStyles = `${mergedTheme.normalText} ${mergedTheme.normalHoverBg} hover:scale-105`;
+          }
 
           return (
             <button
               key={day.toISOString()}
               disabled={disabled}
               onClick={() => handleSelect(day)}
+              aria-label={day.toDateString()}
+              aria-selected={!!isSelected}
+              aria-current={isTodayDate ? "date" : undefined}
               style={cellStyle}
               className={`
                 inline-flex items-center justify-center font-medium transition-all
+                focus:outline-none focus:ring-2 focus:ring-blue-500
                 ${customSize ? "" : presetCellSize}
-                ${resolvedTheme.borderRadius}
-                ${baseStyles}
+                ${mergedTheme.borderRadius}
+                ${!isCurrentMonth ? "opacity-40" : ""}
+                ${cellStyles}
               `}
             >
               {day.getDate()}
@@ -540,36 +542,36 @@ const Calendar = ({
 
       {/* Legend */}
       {mode === "single" && (
-        <div className="mt-6 flex items-center justify-center space-x-4 text-sm">
+        <div className="mt-6 flex items-center justify-center space-x-6 text-sm">
           <div className="flex items-center">
-            <div className={`w-4 h-4 rounded mr-2 ${resolvedTheme.selectedBg}`}></div>
-            <span className={resolvedTheme.normalText}>Selected</span>
+            <div className={`w-4 h-4 rounded mr-2 ${mergedTheme.selectedBg}`} />
+            <span className={mergedTheme.normalText}>Selected</span>
           </div>
           {highlightToday && (
             <div className="flex items-center">
-              <div className={`w-4 h-4 rounded mr-2 ${resolvedTheme.todayBg}`}></div>
-              <span className={resolvedTheme.normalText}>Today</span>
+              <div className={`w-4 h-4 rounded mr-2 ${mergedTheme.todayBg}`} />
+              <span className={mergedTheme.normalText}>Today</span>
             </div>
           )}
           <div className="flex items-center">
-            <div className={`w-4 h-4 rounded mr-2 ${mergedHolidayColor.bg}`}></div>
+            <div className={`w-4 h-4 rounded mr-2 ${mergedHolidayColor.bg}`} />
             <span className={mergedHolidayColor.text}>Holiday</span>
           </div>
         </div>
       )}
 
       {mode === "range" && (
-        <div className="mt-6 flex items-center justify-center space-x-4 text-sm">
+        <div className="mt-6 flex items-center justify-center space-x-6 text-sm">
           <div className="flex items-center">
-            <div className={`w-4 h-4 rounded mr-2 ${resolvedTheme.selectedBg}`}></div>
-            <span className={resolvedTheme.normalText}>Selected</span>
+            <div className={`w-4 h-4 rounded mr-2 ${mergedTheme.selectedBg}`} />
+            <span className={mergedTheme.normalText}>Start/End</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded mr-2"></div>
-            <span className={resolvedTheme.normalText}>In Range</span>
+            <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded mr-2" />
+            <span className={mergedTheme.normalText}>In Range</span>
           </div>
           <div className="flex items-center">
-            <div className={`w-4 h-4 rounded mr-2 ${mergedHolidayColor.bg}`}></div>
+            <div className={`w-4 h-4 rounded mr-2 ${mergedHolidayColor.bg}`} />
             <span className={mergedHolidayColor.text}>Holiday</span>
           </div>
         </div>
