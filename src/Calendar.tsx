@@ -24,7 +24,20 @@ export interface CalendarTheme {
 
 export interface CalendarLocale {
   weekDays?: [string, string, string, string, string, string, string];
-  monthNames?: [string, string, string, string, string, string, string, string, string, string, string, string];
+  monthNames?: [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
 }
 
 export interface CalendarProps {
@@ -82,8 +95,18 @@ const DEFAULT_THEME: Required<CalendarTheme> = {
 const DEFAULT_LOCALE: Required<CalendarLocale> = {
   weekDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   monthNames: [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ],
 };
 
@@ -137,10 +160,12 @@ const Calendar = ({
     };
   }, [userLocale]);
 
-  const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(
+    selectedDate ?? new Date(),
+  );
   const [activePanel, setActivePanel] = useState<"month" | "year" | null>(null);
   const [yearPageStart, setYearPageStart] = useState<number>(
-    (selectedDate ?? new Date()).getFullYear() - 6
+    (selectedDate ?? new Date()).getFullYear() - 6,
   );
 
   // Sync view when selectedDate changes externally
@@ -150,7 +175,10 @@ const Calendar = ({
         selectedDate.getMonth() !== currentMonth.getMonth() ||
         selectedDate.getFullYear() !== currentMonth.getFullYear()
       ) {
-        setCurrentMonth(new Date(selectedDate));
+        const month = () => {
+          setCurrentMonth(new Date(selectedDate));
+        };
+        month();
       }
     }
   }, [selectedDate, currentMonth]);
@@ -158,9 +186,12 @@ const Calendar = ({
   // Size presets with custom override support
   const presetCellSize = useMemo(() => {
     switch (size) {
-      case "sm": return "w-8 h-8 text-xs";
-      case "lg": return "w-14 h-14 text-lg";
-      default: return "w-10 h-10 text-sm";
+      case "sm":
+        return "w-8 h-8 text-xs";
+      case "lg":
+        return "w-14 h-14 text-lg";
+      default:
+        return "w-10 h-10 text-sm";
     }
   }, [size]);
 
@@ -171,100 +202,136 @@ const Calendar = ({
   const gridGap = customSize?.gap ?? 8;
 
   // Normalize disabled weekdays for fast lookup
-  const weekdayOFFSet = useMemo(() => new Set<number>(weekdayOFF), [weekdayOFF]);
+  const weekdayOFFSet = useMemo(
+    () => new Set<number>(weekdayOFF),
+    [weekdayOFF],
+  );
 
   // Merge color props with defaults
-  const mergedHolidayColor = useMemo(() => ({
-    bg: "bg-red-100",
-    text: "text-red-700",
-    hoverBg: "hover:bg-red-200",
-    ...holidayColor,
-  }), [holidayColor]);
+  const mergedHolidayColor = useMemo(
+    () => ({
+      bg: "bg-red-100",
+      text: "text-red-700",
+      hoverBg: "hover:bg-red-200",
+      ...holidayColor,
+    }),
+    [holidayColor],
+  );
 
-  const mergedWeekdayOffColor = useMemo(() => ({
-    bg: "bg-gray-100",
-    text: "text-gray-500",
-    hoverBg: "hover:bg-gray-200",
-    ...weekdayOFFColor,
-  }), [weekdayOFFColor]);
+  const mergedWeekdayOffColor = useMemo(
+    () => ({
+      bg: "bg-gray-100",
+      text: "text-gray-500",
+      hoverBg: "hover:bg-gray-200",
+      ...weekdayOFFColor,
+    }),
+    [weekdayOFFColor],
+  );
 
   // Generate calendar grid
   const days = useMemo(() => {
     return generateMonthGrid(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
-      weekStartsOn
+      weekStartsOn,
     );
   }, [currentMonth, weekStartsOn]);
 
   // Check if date is a holiday
-  const isHoliday = useCallback((date: Date) => {
-    return holidays.some(holiday => isSameDay(holiday, date));
-  }, [holidays]);
+  const isHoliday = useCallback(
+    (date: Date) => {
+      return holidays.some((holiday) => isSameDay(holiday, date));
+    },
+    [holidays],
+  );
 
   // Disable logic
-  const shouldDisable = useCallback((date: Date) => {
-    if (disablePastDates && isDateBefore(date, new Date())) return true;
-    if (disableFutureDates && isDateAfter(date, new Date())) return true;
-    if (minDate && isDateBefore(date, minDate)) return true;
-    if (maxDate && isDateAfter(date, maxDate)) return true;
-    if (disableWeekends && (date.getDay() === 0 || date.getDay() === 6)) return true;
-    if (weekdayOFFSet.has(date.getDay())) return true;
-    if (isDateDisabled && isDateDisabled(date)) return true;
-    return false;
-  }, [disablePastDates, disableFutureDates, minDate, maxDate, disableWeekends, weekdayOFFSet, isDateDisabled]);
+  const shouldDisable = useCallback(
+    (date: Date) => {
+      if (disablePastDates && isDateBefore(date, new Date())) return true;
+      if (disableFutureDates && isDateAfter(date, new Date())) return true;
+      if (minDate && isDateBefore(date, minDate)) return true;
+      if (maxDate && isDateAfter(date, maxDate)) return true;
+      if (disableWeekends && (date.getDay() === 0 || date.getDay() === 6))
+        return true;
+      if (weekdayOFFSet.has(date.getDay())) return true;
+      if (isDateDisabled && isDateDisabled(date)) return true;
+      return false;
+    },
+    [
+      disablePastDates,
+      disableFutureDates,
+      minDate,
+      maxDate,
+      disableWeekends,
+      weekdayOFFSet,
+      isDateDisabled,
+    ],
+  );
 
   // Selection handler
-  const handleSelect = useCallback((date: Date) => {
-    if (shouldDisable(date)) return;
+  const handleSelect = useCallback(
+    (date: Date) => {
+      if (shouldDisable(date)) return;
 
-    if (mode === "single" && onDateChange) {
-      onDateChange(date);
-    } else if (mode === "range" && onRangeChange) {
-      const { start, end } = selectedRange;
-      if (!start || (start && end)) {
-        onRangeChange(date, null);
-      } else if (start && !end) {
-        if (isDateBefore(date, start)) {
-          onRangeChange(date, start);
-        } else {
-          onRangeChange(start, date);
+      if (mode === "single" && onDateChange) {
+        onDateChange(date);
+      } else if (mode === "range" && onRangeChange) {
+        const { start, end } = selectedRange;
+        if (!start || (start && end)) {
+          onRangeChange(date, null);
+        } else if (start && !end) {
+          if (isDateBefore(date, start)) {
+            onRangeChange(date, start);
+          } else {
+            onRangeChange(start, date);
+          }
         }
       }
-    }
-  }, [mode, onDateChange, onRangeChange, selectedRange, shouldDisable]);
+    },
+    [mode, onDateChange, onRangeChange, selectedRange, shouldDisable],
+  );
 
   // Navigation handlers
-  const changeMonth = useCallback((offset: number) => {
-    const newMonth = new Date(currentMonth);
-    newMonth.setMonth(newMonth.getMonth() + offset);
-    setCurrentMonth(newMonth);
-    setActivePanel(null);
-  }, [currentMonth]);
+  const changeMonth = useCallback(
+    (offset: number) => {
+      const newMonth = new Date(currentMonth);
+      newMonth.setMonth(newMonth.getMonth() + offset);
+      setCurrentMonth(newMonth);
+      setActivePanel(null);
+    },
+    [currentMonth],
+  );
 
-  const setMonth = useCallback((monthIndex: number) => {
-    const next = new Date(currentMonth);
-    next.setMonth(monthIndex);
-    setCurrentMonth(next);
-    setActivePanel(null);
-  }, [currentMonth]);
+  const setMonth = useCallback(
+    (monthIndex: number) => {
+      const next = new Date(currentMonth);
+      next.setMonth(monthIndex);
+      setCurrentMonth(next);
+      setActivePanel(null);
+    },
+    [currentMonth],
+  );
 
-  const setYear = useCallback((year: number) => {
-    const next = new Date(currentMonth);
-    next.setFullYear(year);
-    setCurrentMonth(next);
-    setActivePanel(null);
-  }, [currentMonth]);
+  const setYear = useCallback(
+    (year: number) => {
+      const next = new Date(currentMonth);
+      next.setFullYear(year);
+      setCurrentMonth(next);
+      setActivePanel(null);
+    },
+    [currentMonth],
+  );
 
   const toggleMonthPanel = useCallback(() => {
     if (disableMonthNav) return;
-    setActivePanel(prev => prev === "month" ? null : "month");
+    setActivePanel((prev) => (prev === "month" ? null : "month"));
   }, [disableMonthNav]);
 
   const toggleYearPanel = useCallback(() => {
     if (disableMonthNav) return;
     setYearPageStart(currentMonth.getFullYear() - 6);
-    setActivePanel(prev => prev === "year" ? null : "year");
+    setActivePanel((prev) => (prev === "year" ? null : "year"));
   }, [currentMonth, disableMonthNav]);
 
   return (
@@ -293,13 +360,18 @@ const Calendar = ({
             `}
             aria-label="Previous month"
           >
-            <svg 
-              className={`w-6 h-6 ${mergedTheme.normalText}`} 
-              fill="none" 
-              viewBox="0 0 24 24" 
+            <svg
+              className={`w-6 h-6 ${mergedTheme.normalText}`}
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
         )}
@@ -345,13 +417,18 @@ const Calendar = ({
             `}
             aria-label="Next month"
           >
-            <svg 
-              className={`w-6 h-6 ${mergedTheme.normalText}`} 
-              fill="none" 
-              viewBox="0 0 24 24" 
+            <svg
+              className={`w-6 h-6 ${mergedTheme.normalText}`}
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           </button>
         )}
@@ -359,11 +436,13 @@ const Calendar = ({
 
       {/* Month Selector */}
       {activePanel === "month" && !disableMonthNav && (
-        <div className={`
+        <div
+          className={`
           mb-4 p-4 border rounded-xl shadow-sm
           ${mergedTheme.containerBg}
           ${mergedTheme.containerBorder}
-        `}>
+        `}
+        >
           <div className="grid grid-cols-3" style={{ gap: gridGap }}>
             {mergedLocale.monthNames.map((name, index) => {
               const isCurrent = index === currentMonth.getMonth();
@@ -375,9 +454,10 @@ const Calendar = ({
                   className={`
                     px-3 py-2 text-sm font-medium rounded-lg transition-colors
                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                    ${isCurrent
-                      ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
-                      : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
+                    ${
+                      isCurrent
+                        ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
+                        : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
                     }
                   `}
                 >
@@ -391,15 +471,17 @@ const Calendar = ({
 
       {/* Year Selector */}
       {activePanel === "year" && !disableMonthNav && (
-        <div className={`
+        <div
+          className={`
           mb-4 p-4 border rounded-xl shadow-sm
           ${mergedTheme.containerBg}
           ${mergedTheme.containerBorder}
-        `}>
+        `}
+        >
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
-              onClick={() => setYearPageStart(prev => prev - 12)}
+              onClick={() => setYearPageStart((prev) => prev - 12)}
               className={`
                 p-2 rounded-full transition-colors
                 focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -407,8 +489,18 @@ const Calendar = ({
               `}
               aria-label="Previous years"
             >
-              <svg className={`w-5 h-5 ${mergedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className={`w-5 h-5 ${mergedTheme.normalText}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
             <span className={`text-sm font-semibold ${mergedTheme.normalText}`}>
@@ -416,7 +508,7 @@ const Calendar = ({
             </span>
             <button
               type="button"
-              onClick={() => setYearPageStart(prev => prev + 12)}
+              onClick={() => setYearPageStart((prev) => prev + 12)}
               className={`
                 p-2 rounded-full transition-colors
                 focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -424,32 +516,45 @@ const Calendar = ({
               `}
               aria-label="Next years"
             >
-              <svg className={`w-5 h-5 ${mergedTheme.normalText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg
+                className={`w-5 h-5 ${mergedTheme.normalText}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
           </div>
           <div className="grid grid-cols-4" style={{ gap: gridGap }}>
-            {Array.from({ length: 12 }, (_, i) => yearPageStart + i).map((year) => {
-              const isCurrent = year === currentMonth.getFullYear();
-              return (
-                <button
-                  key={year}
-                  type="button"
-                  onClick={() => setYear(year)}
-                  className={`
+            {Array.from({ length: 12 }, (_, i) => yearPageStart + i).map(
+              (year) => {
+                const isCurrent = year === currentMonth.getFullYear();
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => setYear(year)}
+                    className={`
                     px-3 py-2 text-sm font-medium rounded-lg transition-colors
                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                    ${isCurrent
-                      ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
-                      : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
+                    ${
+                      isCurrent
+                        ? `${mergedTheme.selectedBg} ${mergedTheme.selectedText}`
+                        : `${mergedTheme.normalText} ${mergedTheme.normalHoverBg}`
                     }
                   `}
-                >
-                  {year}
-                </button>
-              );
-            })}
+                  >
+                    {year}
+                  </button>
+                );
+              },
+            )}
           </div>
         </div>
       )}
@@ -468,7 +573,10 @@ const Calendar = ({
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 place-items-center" style={{ gap: gridGap }}>
+      <div
+        className="grid grid-cols-7 place-items-center"
+        style={{ gap: gridGap }}
+      >
         {days.map((day, i) => {
           if (!day) {
             return (
@@ -481,12 +589,14 @@ const Calendar = ({
           }
 
           const disabled = shouldDisable(day);
-          const isSelected = mode === "single"
-            ? isSameDay(day, selectedDate)
-            : (selectedRange.start && isSameDay(day, selectedRange.start)) ||
-              (selectedRange.end && isSameDay(day, selectedRange.end));
+          const isSelected =
+            mode === "single"
+              ? isSameDay(day, selectedDate)
+              : (selectedRange.start && isSameDay(day, selectedRange.start)) ||
+                (selectedRange.end && isSameDay(day, selectedRange.end));
 
-          const isInRange = mode === "range" &&
+          const isInRange =
+            mode === "range" &&
             selectedRange.start &&
             selectedRange.end &&
             isDateAfter(day, selectedRange.start) &&
@@ -499,7 +609,7 @@ const Calendar = ({
 
           // Determine cell styles with priority: selected > today > range > holiday > weekdayOff > normal
           let cellStyles = "";
-          
+
           if (disabled) {
             cellStyles = `${mergedTheme.disabledBg} ${mergedTheme.disabledText} cursor-not-allowed opacity-50`;
           } else if (isSelected) {
