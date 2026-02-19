@@ -143,11 +143,11 @@ const Calendar = ({
   size = "md",
   customSize,
 }: CalendarProps) => {
-  // Theme resolution: preset → defaults → user overrides
+  // Theme resolution: defaults → preset → user overrides
   const mergedTheme = useMemo(() => {
     return {
-      ...themes[themeName],
       ...DEFAULT_THEME,
+      ...themes[themeName],
       ...userTheme,
     };
   }, [themeName, userTheme]);
