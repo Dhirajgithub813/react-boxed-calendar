@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { themes } from "./themes";
-import { getMonthTheme } from "./themes/month";
-import {
+import { themes, getThemeForMonth, monthThemes } from "./themes";
+import { 
   generateMonthGrid,
   isDateAfter,
   isDateBefore,
@@ -72,7 +71,7 @@ export interface CalendarProps {
   };
   locale?: CalendarLocale;
   theme?: CalendarTheme;
-  themeName?: keyof typeof themes;
+  themeName?: keyof typeof themes | string;
   size?: "sm" | "md" | "lg";
   customSize?: {
     box?: number;
@@ -158,10 +157,12 @@ const Calendar = ({
 
   // Theme resolution: defaults → month theme → preset → user overrides
   const mergedTheme = useMemo(() => {
+    const monthIndex = currentMonth.getMonth();
+    const baseTheme = getThemeForMonth(themeName, monthIndex);
+    
     return {
       ...DEFAULT_THEME,
-      ...getMonthTheme(currentMonth.getMonth()),
-      ...themes[themeName],
+      ...baseTheme,
       ...userTheme,
     };
   }, [currentMonth, themeName, userTheme]);
