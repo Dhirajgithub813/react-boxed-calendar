@@ -44,6 +44,9 @@ const Home = () => {
   // Navigation State
   const [noNavDate, setNoNavDate] = useState<Date | null>(new Date());
 
+  // Presets State
+  const [presetRange, setPresetRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+
   // Holiday dates (example: Christmas, New Year)
   const holidays = [
     new Date(new Date().getFullYear(), 11, 25), // December 25
