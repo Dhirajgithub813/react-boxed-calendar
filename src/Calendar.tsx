@@ -218,6 +218,7 @@ const Calendar = ({
   }, [selectedDate, currentMonth]);
 
   // Size presets with custom override support
+
   const presetCellSize = useMemo(() => {
     switch (size) {
       case "sm":
@@ -386,6 +387,120 @@ const Calendar = ({
     [currentMonth],
   );
 
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const daysInMonth = days.filter(Boolean).length;
+      const currentIndex = days.findIndex(
+        (d) => d && isSameDay(d, focusedDate),
+      );
+
+      switch (e.key) {
+        case "ArrowLeft": {
+          if (currentIndex > 0) {
+            const prevDay = days[currentIndex - 1];
+            if (prevDay) {
+              setFocusedDate(prevDay);
+              if (focusRef.current) {
+                focusRef.current.focus();
+              }
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+        case "ArrowRight": {
+          if (currentIndex < daysInMonth - 1) {
+            const nextDay = days[currentIndex + 1];
+            if (nextDay) {
+              setFocusedDate(nextDay);
+              if (focusRef.current) {
+                focusRef.current.focus();
+              }
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+        case "ArrowUp": {
+          const weekIndex = Math.floor(currentIndex / 7);
+          if (weekIndex > 0) {
+            const prevWeekDay = days[currentIndex - 7];
+            if (prevWeekDay) {
+              setFocusedDate(prevWeekDay);
+              if (focusRef.current) {
+                focusRef.current.focus();
+              }
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+        case "ArrowDown": {
+          const weekIndex = Math.floor(currentIndex / 7);
+          const totalWeeks = Math.ceil(daysInMonth / 7);
+          if (weekIndex < totalWeeks - 1) {
+            const nextWeekDay = days[currentIndex + 7];
+            if (nextWeekDay) {
+              setFocusedDate(nextWeekDay);
+              if (focusRef.current) {
+                focusRef.current.focus();
+              }
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+        case "Enter":
+        case " ": {
+          if (!shouldDisable(focusedDate)) {
+            handleSelect(focusedDate);
+          }
+          e.preventDefault();
+          break;
+        }
+        case "Escape": {
+          setActivePanel(null);
+          e.preventDefault();
+          break;
+        }
+        case "PageUp": {
+          changeMonth(-1);
+          e.preventDefault();
+          break;
+        }
+        case "PageDown": {
+          changeMonth(1);
+          e.preventDefault();
+          break;
+        }
+        case "Home": {
+          const firstDay = days.find((d) => d);
+          if (firstDay) {
+            setFocusedDate(firstDay);
+            if (focusRef.current) {
+              focusRef.current.focus();
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+        case "End": {
+          const lastDay = days.filter(Boolean).pop();
+          if (lastDay) {
+            setFocusedDate(lastDay);
+            if (focusRef.current) {
+              focusRef.current.focus();
+            }
+          }
+          e.preventDefault();
+          break;
+        }
+      }
+    },
+    [days, focusedDate, shouldDisable, changeMonth, handleSelect],
+  );
+
   const setMonth = useCallback(
     (monthIndex: number) => {
       const next = new Date(currentMonth);
@@ -411,7 +526,7 @@ const Calendar = ({
     setActivePanel((prev) => (prev === "month" ? null : "month"));
   }, [disableMonthNav]);
 
-const toggleYearPanel = useCallback(() => {
+  const toggleYearPanel = useCallback(() => {
     if (disableMonthNav) return;
     setYearPageStart(currentMonth.getFullYear() - 6);
     setActivePanel((prev) => (prev === "year" ? null : "year"));
@@ -433,6 +548,7 @@ const toggleYearPanel = useCallback(() => {
 
   return (
     <div
+      ref={calendarRef}
       className={`
         p-4 sm:p-6 shadow-lg select-none max-w-full
         ${mergedTheme.containerBg}
@@ -444,6 +560,8 @@ const toggleYearPanel = useCallback(() => {
           ? { width: `${customSize.box}px`, height: `${customSize.box}px` }
           : undefined
       }
+      role="application"
+      aria-label="Calendar"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2 flex-wrap">
@@ -484,7 +602,8 @@ const toggleYearPanel = useCallback(() => {
               ${mergedTheme.normalText}
             `}
             aria-label="Select month"
-            aria-expanded={activePanel === "month"}
+            aria-expanded={activePanel === "month" ? "true" : "false"}
+            aria-controls="month-panel"
           >
             {mergedLocale.monthNames[currentMonth.getMonth()]}
           </button>
@@ -498,7 +617,8 @@ const toggleYearPanel = useCallback(() => {
               ${mergedTheme.normalText}
             `}
             aria-label="Select year"
-            aria-expanded={activePanel === "year"}
+            aria-expanded={activePanel === "year" ? "true" : "false"}
+            aria-controls="year-panel"
           >
             {currentMonth.getFullYear()}
           </button>
@@ -554,6 +674,7 @@ const toggleYearPanel = useCallback(() => {
       {/* Month Selector */}
       {activePanel === "month" && !disableMonthNav && (
         <div
+          id="month-panel"
           className={`
           mb-4 p-4 border rounded-xl shadow-sm
           ${mergedTheme.containerBg}
@@ -589,6 +710,7 @@ const toggleYearPanel = useCallback(() => {
       {/* Year Selector */}
       {activePanel === "year" && !disableMonthNav && (
         <div
+          id="year-panel"
           className={`
           mb-4 p-4 border rounded-xl shadow-sm
           ${mergedTheme.containerBg}
@@ -683,6 +805,7 @@ const toggleYearPanel = useCallback(() => {
             key={`weekday-${i}`}
             className="text-center font-semibold text-gray-600 text-xs sm:text-sm py-1 sm:py-2"
             aria-label={d}
+            role="columnheader"
           >
             {d}
           </div>
@@ -691,6 +814,10 @@ const toggleYearPanel = useCallback(() => {
 
       {/* Calendar Grid */}
       <div
+        role="grid"
+        aria-label="Calendar dates"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
         className="grid grid-cols-7 place-items-center"
         style={{ gap: gridGap }}
       >
@@ -701,6 +828,7 @@ const toggleYearPanel = useCallback(() => {
                 key={i}
                 style={cellStyle}
                 className={customSize ? "" : presetCellSize}
+                role="gridcell"
               />
             );
           }
@@ -746,14 +874,28 @@ const toggleYearPanel = useCallback(() => {
             cellStyles = `${mergedTheme.normalText} ${mergedTheme.normalHoverBg} hover:scale-105`;
           }
 
+          // Build descriptive aria-label
+          let dateLabel = day.toDateString();
+          if (isSelected) dateLabel += ", selected";
+          if (isTodayDate) dateLabel += ", today";
+          if (isHolidayDate) dateLabel += ", holiday";
+          if (disabled) dateLabel += ", disabled";
+          if (isInRange) dateLabel += ", in range";
+
+          const isFocused = isSameDay(day, focusedDate);
+
           return (
             <button
               key={day.toISOString()}
               disabled={disabled}
               onClick={() => handleSelect(day)}
-              aria-label={day.toDateString()}
-              aria-selected={!!isSelected}
+              aria-label={dateLabel}
               aria-current={isTodayDate ? "date" : undefined}
+              aria-disabled={disabled}
+              aria-selected={isSelected || undefined}
+              tabIndex={isFocused ? 0 : -1}
+              ref={isFocused ? focusRef : undefined}
+              role="gridcell"
               style={cellStyle}
               className={`
                 inline-flex items-center justify-center font-medium transition-all
