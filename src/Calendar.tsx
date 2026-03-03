@@ -12,6 +12,7 @@ import {
   getLast30Days,
   getThisMonth,
   getLastMonth,
+  getDaysDifference,
 } from "./utils";
 
 export interface CalendarTheme {
@@ -63,6 +64,8 @@ export interface CalendarProps {
   onDatesChange?: (dates: Date[]) => void;
   minDate?: Date;
   maxDate?: Date;
+  minRangeDays?: number;
+  maxRangeDays?: number;
   disablePastDates?: boolean;
   disableFutureDates?: boolean;
   disableWeekends?: boolean;
@@ -147,6 +150,8 @@ const Calendar = ({
   onDatesChange,
   minDate,
   maxDate,
+  minRangeDays,
+  maxRangeDays,
   disablePastDates = false,
   disableFutureDates = false,
   disableWeekends = false,
@@ -322,13 +327,39 @@ const Calendar = ({
       } else if (mode === "range" && onRangeChange) {
         const { start, end } = selectedRange;
         if (!start || (start && end)) {
+          // Starting a new range
           onRangeChange(date, null);
         } else if (start && !end) {
+          // Completing a range - check min/max limits
+          let rangeStart = start;
+          let rangeEnd = date;
+          
+          // If date is before start, swap them
           if (isDateBefore(date, start)) {
-            onRangeChange(date, start);
-          } else {
-            onRangeChange(start, date);
+            rangeStart = date;
+            rangeEnd = start;
           }
+          
+          // Check min range days
+          if (minRangeDays !== undefined) {
+            const daysDiff = getDaysDifference(rangeStart, rangeEnd);
+            if (daysDiff < minRangeDays) {
+              // Range doesn't meet minimum requirement - don't complete the range
+              return;
+            }
+          }
+          
+          // Check max range days
+          if (maxRangeDays !== undefined) {
+            const daysDiff = getDaysDifference(rangeStart, rangeEnd);
+            if (daysDiff > maxRangeDays) {
+              // Range exceeds maximum - don't complete the range
+              return;
+            }
+          }
+          
+          // Range is valid - complete it
+          onRangeChange(rangeStart, rangeEnd);
         }
       } else if (mode === "multi" && onDatesChange) {
         const dateKey = date.toISOString();
@@ -346,7 +377,7 @@ const Calendar = ({
         }
       }
     },
-    [mode, onDateChange, onRangeChange, selectedRange, shouldDisable, selectedDates, selectedDatesSet, onDatesChange],
+    [mode, onDateChange, onRangeChange, selectedRange, shouldDisable, selectedDates, selectedDatesSet, onDatesChange, minRangeDays, maxRangeDays],
   );
 
   // Navigation handlers
@@ -509,6 +540,22 @@ const Calendar = ({
   const handlePresetSelect = useCallback(
     (preset: Preset) => {
       const range = preset.getValue();
+      
+      // Check if preset range meets min/max requirements
+      if (minRangeDays !== undefined || maxRangeDays !== undefined) {
+        const daysDiff = getDaysDifference(range.start, range.end);
+        
+        if (minRangeDays !== undefined && daysDiff < minRangeDays) {
+          // Preset doesn't meet minimum requirement - don't apply it
+          return;
+        }
+        
+        if (maxRangeDays !== undefined && daysDiff > maxRangeDays) {
+          // Preset exceeds maximum - don't apply it
+          return;
+        }
+      }
+      
       if (onRangeChange) {
         onRangeChange(range.start, range.end);
       }
@@ -516,7 +563,7 @@ const Calendar = ({
         onPresetSelect(preset);
       }
     },
-    [onRangeChange, onPresetSelect],
+    [onRangeChange, onPresetSelect, minRangeDays, maxRangeDays],
   );
 
   return (
@@ -923,6 +970,18 @@ const Calendar = ({
             <div className={`w-4 h-4 rounded mr-2 ${mergedHolidayColor.bg}`} />
             <span className={mergedHolidayColor.text}>Holiday</span>
           </div>
+          {(minRangeDays !== undefined || maxRangeDays !== undefined) && (
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded mr-2" />
+              <span className={mergedTheme.normalText}>
+                {minRangeDays !== undefined && maxRangeDays !== undefined
+                  ? `Min: ${minRangeDays}, Max: ${maxRangeDays} days`
+                  : minRangeDays !== undefined
+                  ? `Min: ${minRangeDays} days`
+                  : `Max: ${maxRangeDays} days`}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
