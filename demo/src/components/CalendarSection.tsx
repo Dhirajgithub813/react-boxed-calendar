@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import CodeBlock from "./CodeBlock";
 
 interface CalendarSectionProps {
@@ -27,7 +27,7 @@ const CalendarSection = ({
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <div className="bg-gray-50 rounded-xl p-4 sm:p-8 flex items-center justify-center min-h-[300px] sm:min-h-[400px] overflow-auto">
+          <div className="bg-gray-50 rounded-xl p-4 sm:p-8 flex items-center justify-center min-h-75 sm:min-h-100 overflow-auto">
             {children}
           </div>
 

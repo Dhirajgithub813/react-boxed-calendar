@@ -44,9 +44,6 @@ const Home = () => {
   // Navigation State
   const [noNavDate, setNoNavDate] = useState<Date | null>(new Date());
 
-  // Presets State
-  const [presetRange, setPresetRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
-
   // Holiday dates (example: Christmas, New Year)
   const holidays = [
     new Date(new Date().getFullYear(), 11, 25), // December 25
@@ -102,7 +99,7 @@ const Home = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="py-12 sm:py-16 md:py-20 px-4 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <section className="py-12 sm:py-16 md:py-20 px-4 bg-linear-to-br from-blue-50 to-indigo-50">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
             React Boxed Calendar

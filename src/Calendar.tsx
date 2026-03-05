@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { themes, getThemeForMonth, monthThemes } from "./themes";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { themes, getThemeForMonth } from "./themes";
 import {
   generateMonthGrid,
   isDateAfter,
@@ -186,6 +186,12 @@ const Calendar = ({
   const [yearPageStart, setYearPageStart] = useState<number>(
     (selectedDate ?? new Date()).getFullYear() - 6,
   );
+  const [focusedDate, setFocusedDate] = useState<Date>(
+    selectedDate ?? new Date(),
+  );
+
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const focusRef = useRef<HTMLButtonElement>(null);
 
   // Theme resolution: defaults → month theme → preset → user overrides
   const mergedTheme = useMemo(() => {
@@ -350,13 +356,13 @@ const Calendar = ({
           // Completing a range - check min/max limits
           let rangeStart = start;
           let rangeEnd = date;
-          
+
           // If date is before start, swap them
           if (isDateBefore(date, start)) {
             rangeStart = date;
             rangeEnd = start;
           }
-          
+
           // Check min range days
           if (minRangeDays !== undefined) {
             const daysDiff = getDaysDifference(rangeStart, rangeEnd);
@@ -365,7 +371,7 @@ const Calendar = ({
               return;
             }
           }
-          
+
           // Check max range days
           if (maxRangeDays !== undefined) {
             const daysDiff = getDaysDifference(rangeStart, rangeEnd);
@@ -374,7 +380,7 @@ const Calendar = ({
               return;
             }
           }
-          
+
           // Range is valid - complete it
           onRangeChange(rangeStart, rangeEnd);
         }
@@ -404,6 +410,8 @@ const Calendar = ({
       selectedDatesSet,
       onDatesChange,
       currentMonth,
+      minRangeDays,
+      maxRangeDays,
     ],
   );
 
@@ -567,22 +575,22 @@ const Calendar = ({
   const handlePresetSelect = useCallback(
     (preset: Preset) => {
       const range = preset.getValue();
-      
+
       // Check if preset range meets min/max requirements
       if (minRangeDays !== undefined || maxRangeDays !== undefined) {
         const daysDiff = getDaysDifference(range.start, range.end);
-        
+
         if (minRangeDays !== undefined && daysDiff < minRangeDays) {
           // Preset doesn't meet minimum requirement - don't apply it
           return;
         }
-        
+
         if (maxRangeDays !== undefined && daysDiff > maxRangeDays) {
           // Preset exceeds maximum - don't apply it
           return;
         }
       }
-      
+
       if (onRangeChange) {
         onRangeChange(range.start, range.end);
       }
@@ -1014,8 +1022,8 @@ const Calendar = ({
                 {minRangeDays !== undefined && maxRangeDays !== undefined
                   ? `Min: ${minRangeDays}, Max: ${maxRangeDays} days`
                   : minRangeDays !== undefined
-                  ? `Min: ${minRangeDays} days`
-                  : `Max: ${maxRangeDays} days`}
+                    ? `Min: ${minRangeDays} days`
+                    : `Max: ${maxRangeDays} days`}
               </span>
             </div>
           )}
